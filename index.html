@@ -1,63 +1,27 @@
+
 <!DOCTYPE html>
 <html lang="vi">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SkillMatch - Ghép đôi học thuật</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0", maximum-scale=1.0, user-scalable=no"/>
+    <title>SkillMatch</title>
 
-  <!-- 1. Nạp Google Fonts (Sora & Inter) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Nạp trực tiếp bộ font Be Vietnam Pro và Inter hỗ trợ tiếng Việt 100% -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
 
-  <!-- 2. Nạp React và ReactDOM qua CDN -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-
-  <!-- 3. Nạp Babel Standalone (để trình duyệt tự dịch JSX ngay trên web) -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-  <!-- 4. Nạp Lucide Icons & Supabase (nếu code của bạn có dùng đến) -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    body {
-      font-family: 'Inter', sans-serif;
-      background-color: #F4FAF8;
-      color: #223338;
-    }
-  </style>
-</head>
-<body>
-  <!-- Vị trí mà React sẽ vẽ toàn bộ giao diện vào -->
-  <div id="root"></div>
-
-  <!-- Toàn bộ code React được đặt bên trong thẻ script type="text/babel" -->
-  <script type="text/babel">
-    // Lấy các hooks từ React toàn cục (thay cho lệnh import ... from 'react')
-    const { useState, useEffect, useRef, useCallback } = React;
-
-    // ==========================================
-    // DÁN TOÀN BỘ ĐOẠN CODE REACT CỦA BẠN VÀO ĐÂY
-    // (Bắt đầu từ đoạn khai báo PROFILES, các hàm component Tag, Header, App...)
-    // ==========================================
-
-    // LƯU Ý QUAN TRỌNG: 
-    // 1. Hãy XÓA các dòng `import ... from '...'` ở đầu code gốc của bạn.
-    // 2. Hãy XÓA dòng `export default ...` ở cuối file code gốc nếu có.
-    // 3. Đảm bảo Component chính của bạn có tên (ví dụ: function App() { ... })
-    // ==========================================
-
-    // Dòng lệnh cuối cùng để đưa App lên màn hình:
-    // (Thay chữ "App" bằng tên Component chính trong code của bạn, ví dụ: SkillMatch hoặc Landing)
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<SkillMatch />);
-  </script>
-</body>
+    <!-- Ép toàn bộ thành phần trên web nhận font chuẩn -->
+    <style>
+      * {
+        font-family: 'Be Vietnam Pro', 'Inter', sans-serif !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>
