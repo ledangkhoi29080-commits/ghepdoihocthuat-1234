@@ -36,8 +36,9 @@
     const { useState, useEffect, useRef, useCallback } = React;
 
     // Khởi tạo Supabase client (nếu có URL & KEY từ file supabaseClient.ts của bạn, hãy thay vào 2 chuỗi bên dưới)
-    const SUPABASE_URL = "https://your-supabase-project.supabase.co";
-    const SUPABASE_ANON_KEY = "your-anon-key";
+  const SUPABASE_URL = "https://xxxx.supabase.co"; // Link dự án Supabase của bạn
+const SUPABASE_ANON_KEY = "eyJhbGciOi...";       // Mã Anon Key dài của bạn
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const supabase = (window.supabase && window.supabase.createClient) 
       ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
       : {
@@ -499,7 +500,34 @@
       const [matches, setMatches] = useState([PROFILES[0], PROFILES[1]]);
       const [pendingMatch, setPendingMatch] = useState(null);
       const [selectedChatId, setSelectedChatId] = useState(PROFILES[0].id);
-
+async function handleAuth(authData) {
+        const { email, password, name, isSignUp } = authData;
+        try {
+          if (isSignUp) {
+            const { data, error } = await supabase.auth.signUp({
+              email,
+              password,
+              options: { data: { full_name: name } }
+            });
+            if (error) throw error;
+            alert('Đăng ký thành công! Hãy chuyển sang tab Đăng nhập.');
+          } else {
+            const { data, error } = await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
+            if (error) {
+              alert('Đăng nhập thất bại: Sai email hoặc mật khẩu!');
+              return;
+            }
+            setIsLoggedIn(true);
+            setShowAuth(false);
+            setPage('swipe');
+          }
+        } catch (err) {
+          alert('Lỗi: ' + (err.message || 'Không thể xác thực'));
+        }
+      }
       function handleSwipe(dir) {
         const top = deck[0];
         setDeck((d) => d.slice(1));
@@ -527,7 +555,7 @@
           {page === 'swipe' && <SwipePage deck={deck} onSwipe={handleSwipe} onReset={() => setDeck(PROFILES)} />}
           {page === 'chat' && <ChatPage matches={matches} currentUser={currentUser} selectedId={selectedChatId} setSelectedId={setSelectedChatId} />}
           {page === 'profile' && <ProfilePage currentUser={currentUser} onSave={(data) => { setCurrentUser({ ...currentUser, ...data }); alert('Đã lưu thông tin!'); }} />}
-          {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuth={(d) => { setIsLoggedIn(true); setShowAuth(false); }} />}
+        {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuth={handleAuth} />}
           {pendingMatch && <MatchModal profile={pendingMatch} currentUser={currentUser} onMessage={() => confirmMatch(true)} onContinue={() => confirmMatch(false)} />}
         </div>
       );
