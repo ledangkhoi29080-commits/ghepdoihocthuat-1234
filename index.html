@@ -482,19 +482,19 @@
     }
 
     function App() {
-      const [page, setPage] = useState('landing');
-      const [showAuth, setShowAuth] = useState(false);
-      const [isLoggedIn, setIsLoggedIn] = useState(true);
-      const [currentUser, setCurrentUser] = useState({
-        id: 'me',
-        name: 'Bạn',
-        major: 'Kinh tế / Kinh doanh',
-        haveText: 'Thuyết trình, Làm việc nhóm',
-        wantText: 'Lập trình, Thiết kế',
-        goal: 'Tìm đồng đội nghiên cứu',
-        color: '#5B8DEF',
-        avatarUrl: null,
-      });
+  const [page, setPage] = useState('landing');
+  const [showAuth, setShowAuth] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState({
+    id: '',
+    name: '',
+    major: '',
+    haveText: '',
+    wantText: '',
+    goal: '',
+    color: '#3FA796',
+    avatarUrl: null,
+  });
       const [deck, setDeck] = useState(PROFILES);
       const [matches, setMatches] = useState([PROFILES[0], PROFILES[1]]);
       const [pendingMatch, setPendingMatch] = useState(null);
