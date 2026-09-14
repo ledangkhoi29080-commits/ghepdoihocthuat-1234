@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { supabase } from './supabaseClient';
 import {
   Heart,
@@ -10,6 +10,10 @@ import {
   MessageCircle,
   Users,
   Home,
+  Crown,
+  CheckCircle2,
+  Sparkles,
+  Search,
 } from 'lucide-react';
 
 /* ---------- Design tokens ----------
@@ -204,6 +208,7 @@ function Header({
   currentUser,
   onLogout,
   onLoginClick,
+  onOpenPremium,
 }) {
   const navItems = [
     { key: 'landing', label: 'Trang chủ', icon: Home },
@@ -280,6 +285,28 @@ function Header({
 
         {isLoggedIn ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* Nút Nâng cấp Premium Gradient Gold */}
+            <button
+              type="button"
+              onClick={onOpenPremium}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                color: '#fff',
+                border: 'none',
+                padding: '7px 14px',
+                borderRadius: 999,
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 3px 12px rgba(245, 158, 11, 0.35)',
+              }}
+            >
+              <Crown size={15} color="#fff" fill="#fff" />
+              <span>Nâng cấp Premium</span>
+            </button>
             <Avatar
               name={currentUser.name}
               color={currentUser.color}
@@ -568,20 +595,181 @@ function SwipeCard({ profile, dragX, isTop, onPointerDown }) {
     </div>
   );
 }
+function Card({ profile }: any) {
+  if (!profile) return null;
 
-function SwipePage({ deck, onSwipe, onReset }) {
+  const haveSkills = Array.isArray(profile.have)
+    ? profile.have
+    : (profile.haveText ? String(profile.haveText).split(',').map((s: string) => s.trim()).filter(Boolean) : []);
+
+  const needSkills = Array.isArray(profile.need)
+    ? profile.need
+    : (profile.needText ? String(profile.needText).split(',').map((s: string) => s.trim()).filter(Boolean) : []);
+
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        background: '#fff',
+        borderRadius: 28,
+        boxShadow: '0 8px 20px rgba(34,51,56,0.08)',
+        border: '1px solid #E6EFF0',
+        padding: '28px 24px',
+        display: 'flex',
+        flexDirection: 'column',
+        boxSizing: 'border-box',
+        overflowY: 'auto',
+      }}
+    >
+      {/* Avatar tròn màu xanh ngọc */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20 }}>
+        <div
+          style={{
+            width: 76,
+            height: 76,
+            borderRadius: '50%',
+            backgroundColor: profile.color || '#2E9084',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontSize: 28,
+            fontWeight: 700,
+            marginBottom: 10,
+          }}
+        >
+          {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: '#223338', marginBottom: 2 }}>
+          {profile.name}
+        </div>
+        <div style={{ fontSize: 13, color: '#6B8087' }}>
+          {profile.major || 'Chưa cập nhật ngành'}
+        </div>
+      </div>
+
+      {/* Kỹ năng đang có */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#8DA39E', marginBottom: 6, textTransform: 'uppercase' }}>
+          Kỹ năng đang có
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {haveSkills.length > 0 ? (
+            haveSkills.map((s: string, idx: number) => (
+              <Tag key={idx} tone="have">{s}</Tag>
+            ))
+          ) : (
+            <span style={{ fontSize: 12, color: '#A0B1BA' }}>Chưa cập nhật</span>
+          )}
+        </div>
+      </div>
+
+      {/* Kỹ năng tìm kiếm */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#8DA39E', marginBottom: 6, textTransform: 'uppercase' }}>
+          Kỹ năng tìm kiếm
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {needSkills.length > 0 ? (
+            needSkills.map((s: string, idx: number) => (
+              <Tag key={idx} tone="need">{s}</Tag>
+            ))
+          ) : (
+            <span style={{ fontSize: 12, color: '#A0B1BA' }}>Chưa cập nhật</span>
+          )}
+        </div>
+      </div>
+
+      {/* Mục tiêu / Dự án */}
+      {profile.goal && (
+        <div style={{ marginTop: 'auto' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#8DA39E', marginBottom: 6, textTransform: 'uppercase' }}>
+            Mục tiêu / Dự án
+          </div>
+          <Tag tone="goal">{profile.goal}</Tag>
+        </div>
+      )}
+    </div>
+  );
+}
+function SwipePage({ deck = [], onSwipe, onReset }: any) {
   const [dragX, setDragX] = useState(0);
+  const [selectedEvent, setSelectedEvent] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
   const dragging = useRef(false);
   const startX = useRef(0);
 
-  function pointerDown(e) {
+  const safeDeck = Array.isArray(deck) ? deck : [];
+
+  // Tính toán Top 5 từ khóa xuất hiện nhiều nhất dựa trên từ khóa đang gõ
+  const topSuggestions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+
+    const counts: { [key: string]: { text: string; type: 'skill' | 'goal'; count: number } } = {};
+
+    safeDeck.forEach((p: any) => {
+      // 1. Quét kỹ năng có
+      const skills = Array.isArray(p?.have)
+        ? p.have
+        : (p?.haveText ? String(p.haveText).split(',') : []);
+
+      skills.forEach((s: any) => {
+        const item = String(s).trim();
+        if (item && item.toLowerCase().includes(q)) {
+          const key = `skill_${item.toLowerCase()}`;
+          if (!counts[key]) counts[key] = { text: item, type: 'skill', count: 0 };
+          counts[key].count += 1;
+        }
+      });
+
+      // 2. Quét mục tiêu
+      if (p?.goal && typeof p.goal === 'string' && p.goal.toLowerCase().includes(q)) {
+        const item = p.goal.trim();
+        const key = `goal_${item.toLowerCase()}`;
+        if (!counts[key]) counts[key] = { text: item, type: 'goal', count: 0 };
+        counts[key].count += 1;
+      }
+    });
+
+    return Object.keys(counts)
+      .map((key) => counts[key])
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [searchQuery, safeDeck]);
+
+  // Lọc theo Sự kiện và Từ khóa tìm kiếm
+  const filteredDeck = safeDeck.filter((p: any) => {
+    const matchEvent =
+      selectedEvent === 'all' ||
+      p?.event === selectedEvent ||
+      (p?.goal && String(p.goal).toLowerCase().includes(selectedEvent.toLowerCase()));
+
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return matchEvent;
+
+    const skillsText = Array.isArray(p?.have)
+      ? p.have.join(' ').toLowerCase()
+      : String(p?.haveText || '').toLowerCase();
+    const matchSkill = skillsText.includes(query);
+    const matchGoal = String(p?.goal || '').toLowerCase().includes(query);
+
+    return matchEvent && (matchSkill || matchGoal);
+  });
+
+  function pointerDown(e: any) {
     dragging.current = true;
     startX.current = e.clientX;
   }
-  function pointerMove(e) {
+
+  function pointerMove(e: any) {
     if (!dragging.current) return;
     setDragX(e.clientX - startX.current);
   }
+
   function pointerUp() {
     if (!dragging.current) return;
     dragging.current = false;
@@ -590,10 +778,10 @@ function SwipePage({ deck, onSwipe, onReset }) {
     else setDragX(0);
   }
 
-  function fireSwipe(dir) {
+  function fireSwipe(dir: 'left' | 'right') {
     setDragX(dir === 'right' ? 500 : -500);
     setTimeout(() => {
-      onSwipe(dir);
+      if (onSwipe) onSwipe(dir);
       setDragX(0);
     }, 260);
   }
@@ -607,14 +795,14 @@ function SwipePage({ deck, onSwipe, onReset }) {
     };
   });
 
-  const visible = deck.slice(0, 2);
+  const visible = filteredDeck.slice(0, 2);
 
   return (
     <div
       style={{
         maxWidth: 420,
         margin: '0 auto',
-        padding: '40px 20px 60px',
+        padding: '30px 20px 60px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -626,12 +814,177 @@ function SwipePage({ deck, onSwipe, onReset }) {
           fontWeight: 700,
           fontSize: 24,
           color: '#223338',
-          marginBottom: 28,
+          marginBottom: 20,
         }}
       >
         Quẹt để tìm đồng đội
       </h2>
 
+      {/* THANH TÌM KIẾM & NÚT TẤT CẢ */}
+      <div
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 20,
+        }}
+      >
+        {/* Nút Tất cả */}
+        <button
+          type="button"
+          onClick={() => setSelectedEvent('all')}
+          style={{
+            whiteSpace: 'nowrap',
+            padding: '7px 15px',
+            borderRadius: 999,
+            fontSize: 12.5,
+            fontWeight: 600,
+            cursor: 'pointer',
+            border: selectedEvent === 'all' ? '1px solid #3FA796' : '1px solid #DCEAE6',
+            background: selectedEvent === 'all' ? '#3FA796' : '#fff',
+            color: selectedEvent === 'all' ? '#fff' : '#4E6166',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          Tất cả
+        </button>
+
+        {/* Thanh tìm kiếm có Popover Gợi ý */}
+        <div
+          style={{
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            flex: 1,
+          }}
+        >
+          <Search
+            size={14}
+            color="#8DA39E"
+            style={{ position: 'absolute', left: 12, pointerEvents: 'none' }}
+          />
+          <input
+            type="text"
+            value={searchQuery}
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setShowSuggestions(true);
+            }}
+            placeholder="Tìm kỹ năng hoặc mục tiêu..."
+            style={{
+              width: '100%',
+              padding: '7px 30px 7px 32px',
+              borderRadius: 999,
+              border: '1px solid #DCEAE6',
+              background: '#fff',
+              fontSize: 12.5,
+              color: '#223338',
+              outline: 'none',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
+            }}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                setShowSuggestions(false);
+              }}
+              style={{
+                position: 'absolute',
+                right: 10,
+                background: 'none',
+                border: 'none',
+                color: '#999',
+                cursor: 'pointer',
+                fontSize: 12,
+                padding: 0,
+              }}
+              title="Xóa tìm kiếm"
+            >
+              ✕
+            </button>
+          )}
+
+          {/* Menu Dropdown gợi ý Top 5 từ khóa */}
+          {showSuggestions && topSuggestions.length > 0 && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                marginTop: 6,
+                width: '100%',
+                backgroundColor: '#ffffff',
+                borderRadius: 14,
+                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+                border: '1px solid #E2E8F0',
+                overflow: 'hidden',
+                zIndex: 999,
+              }}
+            >
+              <div
+                style={{
+                  padding: '8px 12px 4px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  color: '#94A3B8',
+                  letterSpacing: 0.5,
+                }}
+              >
+                Gợi ý phổ biến
+              </div>
+              {topSuggestions.map((item, idx) => (
+                <div
+                  key={idx}
+                  onMouseDown={() => {
+                    setSearchQuery(item.text);
+                    setShowSuggestions(false);
+                  }}
+                  style={{
+                    padding: '8px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    fontSize: 12.5,
+                    color: '#1E293B',
+                    transition: 'background-color 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F1F5F9')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        fontWeight: 600,
+                        backgroundColor: item.type === 'skill' ? '#E0F2FE' : '#FEF3C7',
+                        color: item.type === 'skill' ? '#0369A1' : '#B45309',
+                      }}
+                    >
+                      {item.type === 'skill' ? 'Kỹ năng' : 'Mục tiêu'}
+                    </span>
+                    <span style={{ fontWeight: 600 }}>{item.text}</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: '#94A3B8' }}>
+                    {item.count} bạn
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* KHU VỰC THẺ BÀI */}
       <div style={{ position: 'relative', width: '100%', height: 480 }}>
         {visible.length === 0 ? (
           <div
@@ -645,79 +998,103 @@ function SwipePage({ deck, onSwipe, onReset }) {
               alignItems: 'center',
               justifyContent: 'center',
               boxShadow: '0 8px 20px rgba(34,51,56,0.08)',
+              padding: 20,
+              textAlign: 'center',
             }}
           >
-            <p style={{ fontSize: 16, color: '#6B8087', marginBottom: 16 }}>
-              Bạn đã xem hết hồ sơ rồi!
+            <p style={{ fontSize: 15, color: '#6B8087', marginBottom: 16 }}>
+              {searchQuery ? 'Không tìm thấy bạn nào khớp với từ khóa!' : 'Bạn đã xem hết hồ sơ rồi!'}
             </p>
             <button
-              onClick={onReset}
+              onClick={() => {
+                setSearchQuery('');
+                if (onReset) onReset();
+              }}
               style={{
                 background: '#3FA796',
                 color: '#fff',
                 border: 'none',
-                padding: '10px 22px',
+                padding: '10px 20px',
                 borderRadius: 999,
-                fontWeight: 700,
+                fontWeight: 600,
+                fontSize: 14,
                 cursor: 'pointer',
               }}
             >
-              Xem lại từ đầu
+              {searchQuery ? 'Xóa bộ lọc tìm kiếm' : 'Xem lại từ đầu'}
             </button>
           </div>
         ) : (
           visible
             .slice()
             .reverse()
-            .map((p, i) => (
-              <SwipeCard
-                key={p.id}
-                profile={p}
-                isTop={i === visible.length - 1}
-                dragX={i === visible.length - 1 ? dragX : 0}
-                onPointerDown={pointerDown}
-              />
-            ))
+            .map((profile: any, i: number) => {
+              const isTop = i === visible.length - 1;
+              const rot = isTop ? dragX * 0.08 : 0;
+              const tx = isTop ? dragX : 0;
+              const scale = isTop ? 1 : 0.95;
+
+              return (
+                <div
+                  key={profile.id}
+                  onPointerDown={isTop ? pointerDown : undefined}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    transform: `translate3d(${tx}px, 0, 0) rotate(${rot}deg) scale(${scale})`,
+                    transition: dragging.current && isTop ? 'none' : 'transform 0.25s ease',
+                    cursor: isTop ? 'grab' : 'default',
+                    touchAction: 'none',
+                    userSelect: 'none',
+                  }}
+                >
+                  <Card profile={profile} />
+                </div>
+              );
+            })
         )}
       </div>
 
+      {/* NÚT THẢ TIM & BỎ QUA */}
       {visible.length > 0 && (
-        <div style={{ display: 'flex', gap: 28, marginTop: 32 }}>
+        <div style={{ display: 'flex', gap: 20, marginTop: 24 }}>
           <button
+            type="button"
             onClick={() => fireSwipe('left')}
             style={{
-              width: 60,
-              height: 60,
-              borderRadius: '9999px',
-              background: '#fff',
-              border: '2px solid #FBEAE8',
-              color: '#E2574C',
+              width: 54,
+              height: 54,
+              borderRadius: '50%',
+              border: 'none',
+              background: '#FFF0F0',
+              color: '#E53E3E',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              boxShadow: '0 6px 16px rgba(226,87,76,0.18)',
+              boxShadow: '0 4px 12px rgba(229, 62, 62, 0.15)',
             }}
           >
-            <X size={26} />
+            <X size={24} />
           </button>
           <button
+            type="button"
             onClick={() => fireSwipe('right')}
             style={{
-              width: 60,
-              height: 60,
-              borderRadius: '9999px',
-              background: '#3FA796',
+              width: 54,
+              height: 54,
+              borderRadius: '50%',
               border: 'none',
-              color: '#fff',
+              background: '#E6FFFA',
+              color: '#3FA796',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              boxShadow: '0 6px 16px rgba(63,167,150,0.35)',
+              boxShadow: '0 4px 12px rgba(63, 167, 150, 0.2)',
             }}
           >
-            <Heart size={26} fill="#fff" />
+            <Heart size={24} fill="#3FA796" />
           </button>
         </div>
       )}
@@ -1399,8 +1776,25 @@ function ProfilePage({ currentUser, onSave, isReadOnly, onBack, showToast }: any
   const handleFile = (e: any) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setForm((f) => ({ ...f, avatarUrl: url }));
+
+    if (file.size > 3 * 1024 * 1024) {
+      alert('Vui lòng chọn ảnh dưới 3MB!');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      if (base64) {
+        setForm((prev: any) => ({
+          ...prev,
+          avatar: base64,
+          avatar_url: base64,
+          avatarUrl: base64,
+        }));
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   function field(label: string, key: string, placeholder: string) {
@@ -2270,9 +2664,150 @@ function Toast({ message }) {
   );
 }
 
+function PremiumModal({ onClose }: any) {
+  const features = [
+    'Mở khóa tìm kiếm đối tác cho các dự án tự do, đề án môn học hoặc startup (Không giới hạn trong sự kiện trường).',
+    'Phù hiệu (Badge) Premium màu vàng hiển thị trên Profile để tăng độ tin cậy.',
+    'Xem danh sách "Những ai đã thả tim bạn" (See who liked you).',
+  ];
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(6px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 99999,
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: '#ffffff',
+          borderRadius: 28,
+          maxWidth: 420,
+          width: '100%',
+          overflow: 'hidden',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          position: 'relative',
+        }}
+      >
+        {/* Nút đóng */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            background: 'rgba(255,255,255,0.2)',
+            border: 'none',
+            borderRadius: '50%',
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: '#fff',
+            zIndex: 10,
+          }}
+        >
+          <X size={18} />
+        </button>
+
+        {/* Banner Header Premium Tím / Gold */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #4338CA 100%)',
+            padding: '36px 24px 28px',
+            textAlign: 'center',
+            color: '#fff',
+          }}
+        >
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #FDE68A, #F59E0B)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 8px 20px rgba(245, 158, 11, 0.4)',
+              marginBottom: 12,
+            }}
+          >
+            <Crown size={28} color="#78350F" fill="#78350F" />
+          </div>
+          <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: -0.3 }}>
+            SkillMatch Premium
+          </h3>
+          <p style={{ margin: '8px 0 0', fontSize: 13, color: '#C7D2FE', lineHeight: 1.4 }}>
+            Nâng cấp để tìm kiếm đối tác cho các dự án cá nhân, đề án môn học hoặc startup bên ngoài các sự kiện của trường.
+          </p>
+        </div>
+
+        {/* Nội dung 3 đặc quyền */}
+        <div style={{ padding: '24px 24px 20px' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: '#6366F1', letterSpacing: 0.5, marginBottom: 14 }}>
+            Đặc quyền thành viên
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {features.map((feat, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <CheckCircle2 size={18} color="#10B981" style={{ flexShrink: 0, marginTop: 2 }} />
+                <span style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.5 }}>
+                  {feat}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Nút hành động */}
+          <div style={{ marginTop: 24, textAlign: 'center' }}>
+            <button
+              onClick={() => alert('Cảm ơn bạn đã quan tâm! Tính năng thanh toán học sinh/sinh viên sẽ sớm được kích hoạt.')}
+              style={{
+                width: '100%',
+                background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+                color: '#fff',
+                border: 'none',
+                padding: '14px 20px',
+                borderRadius: 999,
+                fontWeight: 800,
+                fontSize: 15,
+                cursor: 'pointer',
+                boxShadow: '0 8px 20px rgba(217, 119, 6, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              <Sparkles size={18} color="#FFFBEB" />
+              Đăng ký chỉ với 49k/tháng
+            </button>
+            <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 10 }}>
+              Hủy gia hạn bất cứ lúc nào • Ưu đãi dành cho sinh viên
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [page, setPage] = useState('landing');
   const [viewingUser, setViewingUser] = useState<any | null>(null);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>({
@@ -2534,24 +3069,29 @@ export default function App() {
       have_skill: formData.haveText || (Array.isArray(formData.have) ? formData.have.join(', ') : formData.have) || '',
       want_skill: formData.wantText || (Array.isArray(formData.want) ? formData.want.join(', ') : formData.want) || '',
       goal: formData.goal || '',
-      avatar_url: formData.avatarUrl || null,
-      birth_year: formData.birthYear || '',
-      primary_skill: formData.primarySkill || '',
-      experience: formData.experience || '',
-      commitment_rate: formData.commitmentRate || 98,
-      project_history: formData.projectHistory || [],
-      updated_at: new Date().toISOString()
-    });
+      avatar_url: formData.avatar || formData.avatarUrl || null,
+        });
 
-    if (error) {
-      console.error('Lỗi khi lưu vào Supabase:', error.message);
-      if (typeof showToast === 'function') showToast('Lỗi: ' + error.message);
-    } else {
-      setCurrentUser(formData);
-      if (typeof showToast === 'function')
-        showToast('Đã lưu hồ sơ thành công!');
-    }
-  };
+        if (error) {
+          console.error('Lỗi lưu hồ sơ Supabase:', error);
+          if (typeof showToast === 'function') showToast('Lỗi khi lưu lên hệ thống!');
+          return;
+        }
+
+        // Cập nhật state currentUser và lưu vào localStorage để không bị mất khi F5
+        const updatedUser = {
+          ...currentUser,
+          ...formData,
+          avatar: formData.avatar || formData.avatarUrl,
+          avatarUrl: formData.avatar || formData.avatarUrl,
+        };
+        setCurrentUser(updatedUser);
+        localStorage.setItem('skillmatch_user', JSON.stringify(updatedUser));
+
+        if (typeof showToast === 'function') {
+          showToast('Đã lưu thông tin cá nhân thành công!');
+        }
+      };
   return (
     <div
       style={{
@@ -2572,6 +3112,7 @@ export default function App() {
         currentUser={currentUser}
         onLogout={handleLogout}
         onLoginClick={() => setShowAuth(true)}
+        onOpenPremium={() => setShowPremiumModal(true)}
       />
 
       {page === 'landing' && <Landing onCtaClick={handleCta} />}
@@ -2580,6 +3121,7 @@ export default function App() {
           deck={deck}
           onSwipe={handleSwipe}
           onReset={() => fetchDeck(currentUser.id)}
+          onOpenPremium={() => setShowPremiumModal(true)}
         />
       )}
       {page === 'chat' && isLoggedIn && (
@@ -2621,6 +3163,9 @@ export default function App() {
         />
       )}
     <Toast message={toast} />
+    {showPremiumModal && (
+        <PremiumModal onClose={() => setShowPremiumModal(false)} />
+      )}
 {/* Modal xem trang cá nhân của bạn bè */}
 {viewingProfile && (
         <div
